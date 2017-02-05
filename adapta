@@ -1,0 +1,101 @@
+#!/usr/bin/fish
+
+set desktop_to_be_removed 0
+
+function -d "Update desktop list" update 
+	switch $argv[1]
+		case node_manage
+			new-window $argv[2..-1]
+		case node_unmanage
+			window-closed $argv[2..-1]
+		case desktop_focus
+			desktop-focused $argv[2..-1]
+	end
+end
+
+function -d "Check if a new window demands a new desktop" new-window
+	set -l monitor $argv[1]
+	set -l desktop $argv[2]
+
+	if test $desktop = $desktop_to_be_removed
+		set desktop_to_be_removed 0
+	end
+
+	set -l last_desktop (bspc query --monitor $monitor --desktops)[-1]
+
+	if test $desktop = $last_desktop
+		create-desktop $monitor
+	end
+end
+
+function -d "Check if the closed window demands the desktop removal" window-closed
+	set -l monitor $argv[1]
+	set -l desktop $argv[2]
+	set -l last_desktop (bspc query --monitor $monitor --desktops)[-1]
+
+	if test $desktop = $last_desktop
+		# There must always be a last empty desktop
+		return
+	end
+
+	set -l number_of_nodes (count (bspc query --desktop $desktop --nodes))
+
+	if test $number_of_nodes -eq 0
+		set -l focused (bspc query --desktop focused --desktops)
+
+		if test $desktop = $focused
+			# Delay desktop removal until it isn't the focused one
+			set desktop_to_be_removed $desktop
+		else
+			remove-desktop $monitor $desktop
+		end
+	end
+end
+
+function -d "Check if the previous desktop should be removed" desktop-focused
+	if test $desktop_to_be_removed -eq 0
+		return
+	end
+
+	set -l monitor $argv[1]
+	set -l desktop $argv[2]
+	set -l last_desktop (bspc query --monitor $monitor --desktops)[-1]
+
+	if test $desktop_to_be_removed = $last_desktop
+		# There must always be a last empty desktop
+		set desktop_to_be_removed 0
+		return
+	end
+
+	if test $desktop != $desktop_to_be_removed
+		remove-desktop $monitor $desktop_to_be_removed
+		set desktop_to_be_removed 0
+	end
+end
+
+
+function create-desktop
+	set -l number (count (bspc query --monitor $argv --desktops))
+	bspc monitor $argv --add-desktops (math $number + 1)
+end
+
+function remove-desktop
+	set -l monitor $argv[1]
+	set -l desktop $argv[2]
+
+	bspc desktop $desktop --remove
+
+	# Rename desktops
+	set -l names (seq 1 (count (bspc query --monitor $monitor --desktops)))
+	bspc monitor $monitor --reset-desktops $names
+end
+
+
+set channel /tmp/channel(random)
+mkfifo $channel
+
+bspc subscribe node_manage node_unmanage desktop_focus > $channel &
+
+while read -la msg < $channel
+	update $msg
+end
