@@ -73,7 +73,6 @@ function -d "Check if the previous desktop should be removed" desktop-focused
 	end
 end
 
-
 function create-desktop
 	set -l number (count (bspc query --monitor $argv --desktops))
 	bspc monitor $argv --add-desktops (math $number + 1)
@@ -90,12 +89,11 @@ function remove-desktop
 	bspc monitor $monitor --reset-desktops $names
 end
 
-
 set channel /tmp/channel(random)
 mkfifo $channel
 
 bspc subscribe node_manage node_unmanage desktop_focus > $channel &
 
-while read -la msg < $channel
-	update $msg
+while read -la event < $channel
+	update $event
 end
