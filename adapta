@@ -2,7 +2,7 @@
 
 set desktop_to_be_removed 0
 
-function -d "Update desktop list" update 
+function update -d "Update desktop list" 
 	switch $argv[1]
 		case node_manage
 			new-window $argv[2..-1]
@@ -13,7 +13,7 @@ function -d "Update desktop list" update
 	end
 end
 
-function -d "Check if a new window demands a new desktop" new-window
+function new-window -d "Check if a new window demands a new desktop"
 	set -l monitor $argv[1]
 	set -l desktop $argv[2]
 
@@ -28,7 +28,7 @@ function -d "Check if a new window demands a new desktop" new-window
 	end
 end
 
-function -d "Check if the closed window demands the desktop removal" window-closed
+function window-closed -d "Check if the closed window demands the desktop removal"
 	set -l monitor $argv[1]
 	set -l desktop $argv[2]
 	set -l last_desktop (bspc query --monitor $monitor --desktops)[-1]
@@ -52,7 +52,7 @@ function -d "Check if the closed window demands the desktop removal" window-clos
 	end
 end
 
-function -d "Check if the previous desktop should be removed" desktop-focused
+function desktop-focused -d "Check if the previous desktop should be removed"
 	if test $desktop_to_be_removed -eq 0
 		return
 	end
